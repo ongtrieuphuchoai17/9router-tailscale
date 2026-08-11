@@ -88,10 +88,13 @@ async function resolveToken() {
 
 async function getTailnetName(token) {
   try {
-    const t = await tsRequest('GET', '/tailnet', token)
-    const name = JSON.parse(t).tailnet
-    console.error(`    tailnet: ${name}`)
-    return name
+    const res = await fetch(`${API_BASE}/tailnet`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return tailnet
+    const name = JSON.parse(await res.text()).tailnet
+    if (name) console.error(`    tailnet: ${name}`)
+    return name || tailnet
   } catch {
     return tailnet
   }
