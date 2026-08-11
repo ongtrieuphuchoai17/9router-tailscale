@@ -88,3 +88,4 @@ coverage/
 # ── Git O-Alias helpers ───────────────────────
 .git-o-config
 .opushforce.message
+gh-workspace.jsonc
