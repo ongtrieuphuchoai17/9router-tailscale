@@ -34,12 +34,14 @@ jobs:
         id: autoconf
         env:
           TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
+          TAILSCALE_CLIENT_ID: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          TAILSCALE_CLIENT_SECRET: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
           TAILSCALE_HOSTNAME: ${{ vars.TAILSCALE_HOSTNAME }}
           TAILSCALE_TAGS: ${{ vars.TAILSCALE_TAGS }}
         run: |
-          if [ -z "$TAILSCALE_API_KEY" ]; then
-            echo "::error::TAILSCALE_API_KEY secret is not set."
-            echo "::error::Add it: repo → Settings → Secrets and variables → Actions → TAILSCALE_API_KEY"
+          if [ -z "$TAILSCALE_API_KEY" ] && { [ -z "$TAILSCALE_CLIENT_ID" ] || [ -z "$TAILSCALE_CLIENT_SECRET" ]; }; then
+            echo "::error::Set TAILSCALE_API_KEY (or TAILSCALE_CLIENT_ID + TAILSCALE_CLIENT_SECRET) in"
+            echo "::error::repo → Settings → Secrets and variables → Actions"
             exit 1
           fi
           node scripts/tailscale-autoconfigure.mjs > /tmp/tskey.txt
