@@ -1,0 +1,26 @@
+{
+  "name": "9router-tailscale",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "9Router - FREE AI Router & Token Saver, deployed from a GitHub Codespace",
+  "scripts": {
+    "start": "node start.mjs",
+    "start:log": "node start.mjs -l",
+    "start:bg": "bash scripts/start-bg.sh",
+    "keep-alive": "bash scripts/keep-alive.sh",
+    "tunnel": "node scripts/tunnel.mjs",
+    "tunnel:enable": "node scripts/tunnel.mjs enable",
+    "tunnel:disable": "node scripts/tunnel.mjs disable",
+    "tunnel:tailscale": "node scripts/tunnel.mjs tailscale-status",
+    "tunnel:tailscale-enable": "node scripts/tunnel.mjs tailscale-enable",
+    "tunnel:tailscale-disable": "node scripts/tunnel.mjs tailscale-disable",
+    "tunnel:tailscale-check": "node scripts/tunnel.mjs tailscale-check",
+    "tailscale-setup": "bash scripts/tailscale-setup.sh",
+    "tailscale-autoconfigure": "node scripts/tailscale-autoconfigure.mjs",
+    "stop": "bash scripts/stop.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
