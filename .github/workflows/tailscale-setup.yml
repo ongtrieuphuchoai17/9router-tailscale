@@ -1,0 +1,70 @@
+name: Tailscale automation
+
+# Fully-automatic Tailscale provisioning using only the TAILSCALE_API_KEY secret.
+# On every push to main this:
+#   1. Enables MagicDNS + HTTPS certificates + the `funnel` ACL attribute on the
+#      tailnet via the Tailscale API (no browser approval needed).
+#   2. Mints a reusable pre-authorized auth key.
+#   3. Registers a temporary smoke-test node to prove the key works, then
+#      removes it again.
+#
+# NOTE: 9router itself runs in the Codespace; its node is provisioned there with
+# `npm run tailscale-setup` (which reads TAILSCALE_API_KEY from .env). This
+# workflow keeps the tailnet-level configuration applied on every push.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tailscale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure tailnet + mint auth key
+        id: autoconf
+        env:
+          TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
+          TAILSCALE_HOSTNAME: ${{ vars.TAILSCALE_HOSTNAME }}
+          TAILSCALE_TAGS: ${{ vars.TAILSCALE_TAGS }}
+        run: |
+          if [ -z "$TAILSCALE_API_KEY" ]; then
+            echo "::error::TAILSCALE_API_KEY secret is not set."
+            echo "::error::Add it: repo → Settings → Secrets and variables → Actions → TAILSCALE_API_KEY"
+            exit 1
+          fi
+          node scripts/tailscale-autoconfigure.mjs > /tmp/tskey.txt
+          echo "AUTHKEY=$(cat /tmp/tskey.txt)" >> "$GITHUB_ENV"
+
+      - name: Install tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh
+
+      - name: Register smoke-test node (validates the auth key)
+        env:
+          TAILSCALE_HOSTNAME: ${{ vars.TAILSCALE_HOSTNAME }}
+        run: |
+          HN="${TAILSCALE_HOSTNAME:-9router}-ci-${GITHUB_RUN_ID}"
+          sudo tailscale up --auth-key="$AUTHKEY" --hostname="$HN" --accept-routes --operator="$USER"
+          tailscale status
+          echo "NODE_ID=$(tailscale status --json | grep -o '"ID":"[^"]*"' | head -1 | sed 's/.*"ID":"\([^"]*\)"/\1/')" >> "$GITHUB_ENV"
+
+      - name: Cleanup smoke-test node
+        if: always()
+        env:
+          TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
+        run: |
+          if [ -n "${NODE_ID:-}" ]; then
+            curl -fsS -X DELETE \
+              -H "Authorization: Bearer $TAILSCALE_API_KEY" \
+              "https://api.tailscale.com/api/v2/device/$NODE_ID" \
+              && echo "deleted smoke-test node $NODE_ID"
+          fi

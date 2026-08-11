@@ -62,11 +62,11 @@ async function resolveToken() {
   const clientSecret = env('TAILSCALE_CLIENT_SECRET')
 
   if (apiKey) {
-    console.log('[1/5] using TAILSCALE_API_KEY')
+    console.error('[1/5] using TAILSCALE_API_KEY')
     return apiKey
   }
   if (clientId && clientSecret) {
-    console.log('[1/5] exchanging OAuth client credentials for a token')
+    console.error('[1/5] exchanging OAuth client credentials for a token')
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: clientId,
@@ -90,7 +90,7 @@ async function getTailnetName(token) {
   try {
     const t = await tsRequest('GET', '/tailnet', token)
     const name = JSON.parse(t).tailnet
-    console.log(`    tailnet: ${name}`)
+    console.error(`    tailnet: ${name}`)
     return name
   } catch {
     return tailnet
@@ -101,10 +101,10 @@ async function getTailnetName(token) {
 // 2. MagicDNS
 // ---------------------------------------------------------------------------
 async function ensureMagicDNS(token) {
-  console.log('[2/5] ensuring MagicDNS...')
+  console.error('[2/5] ensuring MagicDNS...')
   const prefs = JSON.parse(await tsRequest('GET', `/tailnet/${tailnet}/dns/preferences`, token))
   if (prefs.magicDNS) {
-    console.log('    MagicDNS already enabled')
+    console.error('    MagicDNS already enabled')
     return
   }
   const res = await tsRequest(
@@ -114,40 +114,40 @@ async function ensureMagicDNS(token) {
     { magicDNS: true },
     { 'Content-Type': 'application/json' }
   )
-  console.log(`    MagicDNS enabled: ${JSON.parse(res).magicDNS}`)
+  console.error(`    MagicDNS enabled: ${JSON.parse(res).magicDNS}`)
 }
 
 // ---------------------------------------------------------------------------
 // 3. HTTPS certificates (tailnet settings)
 // ---------------------------------------------------------------------------
 async function ensureHTTPS(token) {
-  console.log('[3/5] ensuring HTTPS certificates...')
+  console.error('[3/5] ensuring HTTPS certificates...')
   let settings = {}
   try {
     settings = JSON.parse(await tsRequest('GET', `/tailnet/${tailnet}/settings`, token))
   } catch (e) {
-    console.log('    could not read tailnet settings, attempting to enable HTTPS anyway')
+    console.error('    could not read tailnet settings, attempting to enable HTTPS anyway')
   }
   if (settings.httpsEnabled) {
-    console.log('    HTTPS already enabled')
+    console.error('    HTTPS already enabled')
     return
   }
   await tsRequest('PATCH', `/tailnet/${tailnet}/settings`, token, { httpsEnabled: true }, {
     'Content-Type': 'application/json',
   })
-  console.log('    HTTPS enabled')
+  console.error('    HTTPS enabled')
 }
 
 // ---------------------------------------------------------------------------
 // 4. Funnel node attribute in the ACL
 // ---------------------------------------------------------------------------
 async function ensureFunnelAttr(token) {
-  console.log('[4/5] ensuring funnel node attribute in ACL...')
+  console.error('[4/5] ensuring funnel node attribute in ACL...')
   let raw = await tsRequest('GET', `/tailnet/${tailnet}/acl`, token, undefined, {
     Accept: 'application/hujson',
   })
   if (raw.includes('"funnel"')) {
-    console.log('    funnel attr already present')
+    console.error('    funnel attr already present')
     return
   }
   let acl = null
@@ -170,14 +170,14 @@ async function ensureFunnelAttr(token) {
   await tsRequest('POST', `/tailnet/${tailnet}/acl`, token, raw, {
     'Content-Type': 'application/hujson',
   })
-  console.log('    funnel attr added to ACL')
+  console.error('    funnel attr added to ACL')
 }
 
 // ---------------------------------------------------------------------------
 // 5. Create a reusable, pre-authorized auth key
 // ---------------------------------------------------------------------------
 async function createAuthKey(token) {
-  console.log('[5/5] creating reusable pre-authorized auth key...')
+  console.error('[5/5] creating reusable pre-authorized auth key...')
   const body = {
     capabilities: {
       devices: {
@@ -198,7 +198,7 @@ async function createAuthKey(token) {
     })
   )
   if (!res.key) fail('key creation returned no key')
-  console.log('    auth key created')
+  console.error('    auth key created')
   return res.key
 }
 
@@ -209,4 +209,4 @@ await ensureMagicDNS(token)
 await ensureHTTPS(token)
 await ensureFunnelAttr(token)
 const key = await createAuthKey(token)
-console.log(key)
+process.stdout.write(key + '\n')
