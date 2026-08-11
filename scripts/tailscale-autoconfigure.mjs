@@ -48,6 +48,14 @@ async function tsRequest(method, path, token, body, headers = {}) {
   })
   const text = await res.text()
   if (!res.ok) {
+    if (res.status === 401) {
+      fail(
+        `API ${method} ${path} -> 401 (API token invalid). ` +
+          'Ensure the secret is a tskey-api-... access token with the needed ' +
+          'scopes (dns, acl, tailnet settings, auth_keys), not an auth key ' +
+          '(tskey-auth-...) or an OAuth client secret.'
+      )
+    }
     fail(`API ${method} ${path} -> ${res.status}: ${text.slice(0, 300)}`)
   }
   return text
